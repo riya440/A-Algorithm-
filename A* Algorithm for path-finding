@@ -1,0 +1,220 @@
+package guiapplication;
+
+import java.util.PriorityQueue;
+import java.util.Random;
+
+public class AStar {
+	
+	// costs for diagonal and vertical/ horizontal move
+	 int diagonal_cost=14;
+	 int vh_cost=10;
+	
+	// cell of our grid
+	 Cell[][] grid;
+	// we define a priority queue for open cells
+	 PriorityQueue<Cell> openCells;
+	
+	// closed cell: the set of nodes already evaluated
+	boolean[][] closedCells;
+	
+	//start cell
+	 int startI,startJ;
+	
+	//end cell
+	int endI,endJ;
+	
+	public AStar(int width,int height, int si, int sj, int ei, int ej, int [][] blocks) {
+		grid =new Cell[width][height];
+		closedCells= new boolean[width][height];
+		openCells= new PriorityQueue<Cell>((Cell c1, Cell c2) ->{
+			if(c1.finalCost < c2.finalCost)
+				return -1;
+			
+			else if( c1.finalCost > c2.finalCost )
+			return 1;
+			
+			else 
+				return 0;
+		});
+		
+		startCell(si,sj);
+		endCell(ei,ej);
+		
+		//init heuristic and cells
+		for(int i=0;i< grid.length;i++) {
+			for(int j=0;j<grid.length;j++) {
+				grid[i][j]=new Cell(i,j);
+				grid[i][j].heuristicCost=Math.abs(i-endI) + Math.abs(j-endJ);
+				grid[i][j].solution=false;
+				}
+		}
+		grid[startI][startJ].finalCost=0;
+		
+		//we put the blocks on the grid
+		for(int i=0;i<blocks.length;i++) {
+			addBlockOnCell(blocks[i][0], blocks[i][1]);
+		}
+	}
+	
+	public void addBlockOnCell(int i,int j) {
+		grid[i][j]=null;
+	}
+	
+	public void startCell(int i,int j) {
+		startI= i;
+		startJ=j;
+	}
+	
+	public void endCell(int i,int j) {
+		endI=i;
+		endJ=j;
+	}
+	
+	public void updatedCostIfNeeded(Cell current,Cell t,int cost) {
+		if(t==null || closedCells[t.i][t.j])
+			return;
+		int tFinalCost =t.heuristicCost + cost;
+		boolean isOpen= openCells.contains(t);
+		
+		if(!isOpen || tFinalCost< t.finalCost) {
+			t.finalCost=tFinalCost;
+			t.parent=current;
+			
+			if(!isOpen)
+				openCells.add(t);
+			}
+	}
+	
+	public void process() {
+		//we add the start location to open list
+		openCells.add(grid[startI][startJ]);
+		Cell current;
+		
+		while(!openCells.isEmpty()){
+			current =openCells.poll();
+			
+			closedCells[current.i][current.j] = true;
+			
+			if(current.equals(grid[endI][endJ]))
+				return;
+			
+			Cell t;
+			
+			
+			if (current.i -1>=0) {
+				t=grid[current.i-1][current.j];
+			    updatedCostIfNeeded(current,t,current.finalCost + vh_cost);
+			}
+			
+			if (current.j -1>=0 && current.i-1>=0) {
+				t=grid[current.i-1][current.j-1];
+				updatedCostIfNeeded(current,t,current.finalCost + diagonal_cost);
+			}
+			
+			if (current.j + 1< grid[0].length && current.i-1>=0) {
+				t=grid[current.i-1][current.j+1];
+				updatedCostIfNeeded(current,t,current.finalCost + diagonal_cost);
+			}
+			
+			if (current.j -1>=0) {
+				t=grid[current.i][current.j-1];
+				updatedCostIfNeeded(current,t,current.finalCost + vh_cost);
+			}
+			
+			if (current.j+1 <grid[0].length) {
+				t=grid[current.i][current.j+1];
+				updatedCostIfNeeded(current,t,current.finalCost + vh_cost);
+			}
+			
+			if (current.i +1<grid.length) {
+				t=grid[current.i+1][current.j];
+				updatedCostIfNeeded(current,t,current.finalCost + vh_cost);
+			}
+			
+			if (current.j -1>=0 && current.i+1<grid.length) {
+				t=grid[current.i+1][current.j-1];
+				updatedCostIfNeeded(current,t,current.finalCost + diagonal_cost);
+			}
+			
+			if (current.j +1<grid[0].length && current.i+1<grid.length) {
+				t=grid[current.i+1][current.j+1];
+				updatedCostIfNeeded(current,t,current.finalCost + diagonal_cost);
+			}
+		}
+	}
+	
+	public void display() {
+		System.out.println("Grid : ");
+		
+		for(int i=0;i<grid.length;i++) {
+			for(int j=0;j<grid.length;j++) {
+				if(i==startI && j==startJ)
+					System.out.print(("SO  ")); //source cell
+				
+				else if(i==endI && j==endJ)
+					System.out.print(("DE  ")); //destination cell
+				
+				else if(grid[i][j]!=null)
+					System.out.printf("%-3d ",0);
+				
+				else {
+					System.out.print("BL  "); //block cell	
+			      }
+				}
+			System.out.println();
+		}
+		System.out.println();
+	}
+	
+	public void displaySolution() {
+		if(closedCells[endI][endJ]) {
+			// we back track path
+			System.out.print("Path : ");
+			Cell current =grid[endI][endJ];
+			System.out.print(current);
+			grid[current.i][current.j].solution=true;
+			
+			while(current.parent != null) {
+				System.out.print(" -> "+current.parent);
+				grid[current.parent.i][current.parent.j].solution=true;
+				current =current.parent;
+			}
+			
+			System.out.println("\n");
+			
+			for(int i=0;i<grid.length;i++) {
+				for(int j=0;j<grid.length;j++) {
+					if(i==startI && j==startJ)
+						System.out.print(("SO  ")); //source cell
+					
+					else if(i==endI && j==endJ)
+						System.out.print(("DE  ")); //destination cell
+					
+					else if(grid[i][j]!=null)
+						System.out.printf("%-3s ",grid[i][j].solution ? "X" : "0");
+					
+					else
+						System.out.print("BL  "); //block cell	
+				}
+				System.out.println();
+			}
+			System.out.println();
+		}
+		else
+			System.out.println(" NO POSSIBLE PATH");
+	} 
+	  
+	public static void main(String[] args) {
+		Random r=new Random();
+		
+		AStar aStar =new AStar(10,10,r.nextInt(10),r.nextInt(10),r.nextInt(10),r.nextInt(10),
+				new int [][] {{r.nextInt(10),r.nextInt(10)},{r.nextInt(10),r.nextInt(10)},
+			{r.nextInt(10),r.nextInt(10)},{r.nextInt(10),r.nextInt(10)},{r.nextInt(10),r.nextInt(10)},
+			{r.nextInt(10),r.nextInt(10)},{r.nextInt(10),r.nextInt(10)},{r.nextInt(10),r.nextInt(10)},
+			{r.nextInt(10),r.nextInt(10)},{r.nextInt(10),r.nextInt(10)}});
+		aStar.display();
+		aStar.process(); //apply a* algorithm
+		aStar.displaySolution(); //display solution path
+	}
+
+}
